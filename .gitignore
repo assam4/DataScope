@@ -1,0 +1,32 @@
+# Compiled object files
+*.o
+*.obj
+*.out
+
+# Executables
+*.exe
+*.app
+*.so
+*.a
+*.lib
+*.dll
+
+# Build directories
+build/
+cmake-build-debug/
+cmake-build-release/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+*~
