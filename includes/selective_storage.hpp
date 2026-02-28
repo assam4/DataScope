@@ -20,6 +20,7 @@ namespace datascope {
         QUANTITY    = 1 << 3,   ///< Order quantity
         SIDE        = 1 << 4,   ///< Order side (bid/ask)
         REBUILD     = 1 << 5,   ///< Rebuild flag
+        PRICE_LOG   = RECEIVE_TS | PRICE | 1 << 6,   ///< Price calculating flag using receive_ts for compare
         ///< Combination for order book level data
         LEVEL       = RECEIVE_TS | EXCHANGE_TS | PRICE | QUANTITY | SIDE,
         ///< Combination for order book trade data
@@ -32,7 +33,22 @@ namespace datascope {
     *   Used with Empty Base Optimization to reduce structure size
     *    when flags are not set.
      */
-    struct  __emptyField;
+    struct __emptyReceiveTs {};
+    struct __emptyExchangeTs {};
+    struct __emptyPrice {};
+    struct __emptyQuantity {};
+    struct __emptySide {};
+    struct __emptyRebuild {};
+
+    /**
+    *   @brief Named field structures
+     */
+    struct ReceiveTs { uint64_t receive_ts; };
+    struct ExchangeTs { uint64_t exchange_ts; };
+    struct Price { double price; };
+    struct Quantity { double quantity; };
+    struct Side { bool side; };
+    struct Rebuild { bool rebuild; };
 
     /**
     *   @brief Data structure/accumulator with selective field storage
@@ -44,14 +60,14 @@ namespace datascope {
     *   @note structure size depends on set flags
     *   @note Zero rutime overhead - all operations are compile-time
      */
-
     template <AccFlags F>
-    struct  DataAccumulator: std::conditional_t<(F & AccFlags::RECEIVE_TS), struct { uint64_t  receive_ts;}, __emptyField>,
-                            std::conditional_t<(F & AccFlags::EXCHANGE_TS), struct { uint64_t  exchange_ts;}, __emptyField>,
-                            std::conditional_t<(F & AccFlags::PRICE), struct { double  price;}, __emptyField>,
-                            std::conditional_t<(F & AccFlags::QUANTITY), struct { double   price;}, __emptyField>,
-                            std::conditional_t<(F & AccFlags::SIDE), struct { bool side;}, __emptyField>,
-                            std::conditional_t<(F & AccFlags::REBUILD), struct { bool rebuild;}, __emptyField>
+    struct DataAccumulator : 
+        std::conditional_t<(static_cast<uint32_t>(F) & static_cast<uint32_t>(AccFlags::RECEIVE_TS)), ReceiveTs, __emptyReceiveTs>,
+        std::conditional_t<(static_cast<uint32_t>(F) & static_cast<uint32_t>(AccFlags::EXCHANGE_TS)), ExchangeTs, __emptyExchangeTs>,
+        std::conditional_t<(static_cast<uint32_t>(F) & static_cast<uint32_t>(AccFlags::PRICE)), Price, __emptyPrice>,
+        std::conditional_t<(static_cast<uint32_t>(F) & static_cast<uint32_t>(AccFlags::QUANTITY)), Quantity, __emptyQuantity>,
+        std::conditional_t<(static_cast<uint32_t>(F) & static_cast<uint32_t>(AccFlags::SIDE)), Side, __emptySide>,
+        std::conditional_t<(static_cast<uint32_t>(F) & static_cast<uint32_t>(AccFlags::REBUILD)), Rebuild, __emptyRebuild>
     {};
 }
 
