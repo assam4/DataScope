@@ -31,6 +31,7 @@ namespace datascope {
     class MarketDataParser {
         public:
             MarketDataParser() = delete;
+
             /**
              *  @brief Template static parse function
              *  @details function get CSV format chunk and call foreach line parse_line specializated function with type F.
@@ -94,6 +95,7 @@ namespace datascope {
                 auto    start_pos = field_jumper(line, n);
                 return line.substr(start_pos, field_length(line, start_pos));
             }
+            
             /**
              *  @brief Template static method
              *  @details The function parses a single string into CSV format.
@@ -107,19 +109,90 @@ namespace datascope {
             }
     };
 
-
     /**
-    *  @brief Specializing AccFlags::PRICE_LOG function parse_line
-    *  @details Used when in our area of interest the values receive_ts and price are used,
-    *          while the rest of the values are discarded. It is important to note that the parsing
-    *          function works according to the rule that the CSV format is receive_ts; x; price; ...
+     *  @brief Combination for collecting receive timestamp and price fields.
+     *      Suitable for time-series price logging with local reception timestamps.
+     *      Enables calculations like price changes over time or latency analysis.
+     *      It is important to note that the parsing function works according to the rule that the CSV format is
+     *      " receive_ts; x; price; ... ".
     */
     template <>
-    inline DataAccumulator<AccFlags::PRICE_LOG>    MarketDataParser::parse_line<AccFlags::PRICE_LOG>(const std::string& line) {
+    inline DataAccumulator<AccFlags::RECEIVE_TS_PRICE_PAIR>    MarketDataParser::parse_line<AccFlags::RECEIVE_TS_PRICE_PAIR>(const std::string& line) {
         constexpr size_t    receive_ts_start = 0, price_start = 2;
-        DataAccumulator<AccFlags::PRICE_LOG> field;
+        DataAccumulator<AccFlags::RECEIVE_TS_PRICE_PAIR> field;
         field.receive_ts = std::stoull(get_field(line, receive_ts_start));
         field.price = std::stod(get_field(line, price_start));
+        return field;
+    }
+
+    /**
+     *  @brief Combination for collecting price and quantity fields.
+     *      Useful for volume-price analysis, such as VWAP or order size tracking.
+     *      Allows aggregating trade volumes at specific price levels.
+     *      It is important to note that the parsing function works according to the rule that the CSV format is
+     *      " x; x; price; quantity; ... ".
+    */
+    template <>
+    inline DataAccumulator<AccFlags::PRICE_QUANTITY_PAIR>   MarketDataParser::parse_line<AccFlags::PRICE_QUANTITY_PAIR>(const std::string& line) {
+        constexpr size_t    price_start = 2, quantity_start = 3;
+        DataAccumulator<AccFlags::PRICE_QUANTITY_PAIR>  field;
+        field.price = std::stod(get_field(line, price_start));
+        field.quantity = std::stod(get_field(line, quantity_start));
+        return field;
+    }
+
+    /**
+     *  @brief Combination for collecting price and side fields.
+     *      Direction analysis: Allows you to track how prices change during purchases/sales
+     *       (for example, whether prices rise on buy or fall on sell).
+     *      Indicators: Suitable for calculating momentum, RSI, or directional price movements.
+     *      Calculation examples: Average price on each side; identification of the dominant side (bullish/bearish pressure).
+     *      It is important to note that the parsing function works according to the rule that the CSV format is
+     *      " x; x; price; x; side; ... ".
+     */
+    template <>
+    inline DataAccumulator<AccFlags::PRICE_SIDE_PAIR>   MarketDataParser::parse_line<AccFlags::PRICE_SIDE_PAIR>(const std::string& line) {
+        constexpr size_t    price_start = 2, side_start = 4;
+        DataAccumulator<AccFlags::PRICE_SIDE_PAIR> field;
+        field.price = std::stod(get_field(line, price_start));
+        field.side = (get_field(line, side_start) == "bid") ? true : false;
+        return field;
+    }
+
+    /**
+    *   @brief Specialization for order book level data.
+    *         Parses receive_ts, exchange_ts, price, quantity, side.
+    *         It is important to note that the parsing function works according to the rule that the CSV format is
+    *         " receive_ts; exchange_ts; price; quantity; side; ... ".
+    */
+    template<>
+    inline DataAccumulator<AccFlags::LEVEL> MarketDataParser::parse_line<AccFlags::LEVEL>(const std::string& line) {
+        constexpr size_t    receive_ts_start = 0, exchange_ts_start = 1, price_start = 2, quantity_start = 3, side_start = 4;
+        DataAccumulator<AccFlags::LEVEL>    field;
+        field.receive_ts = std::stoull(get_field(line, receive_ts_start));
+        field.exchange_ts = std::stoull(get_field(line, exchange_ts_start));
+        field.price = std::stod(get_field(line, price_start));
+        field.quantity = std::stod(get_field(line, quantity_start));
+        field.side = (get_field(line, side_start) == "bid") ? true : false;
+        return field;
+    }
+
+    /**
+    *   @brief Specialization for order book level data.
+    *         Parses receive_ts, exchange_ts, price, quantity, side, rebuild.
+    *         It is important to note that the parsing function works according to the rule that the CSV format is
+    *         " receive_ts; exchange_ts; price; quantity; side; rebuild; ... ".
+    */
+    template<>
+    inline DataAccumulator<AccFlags::TRADE> MarketDataParser::parse_line<AccFlags::TRADE>(const std::string& line) {
+        constexpr size_t    receive_ts_start = 0, exchange_ts_start = 1, price_start = 2, quantity_start = 3, side_start = 4, rebuild_start = 5;
+        DataAccumulator<AccFlags::TRADE>    field;
+        field.receive_ts = std::stoull(get_field(line, receive_ts_start));
+        field.exchange_ts = std::stoull(get_field(line, exchange_ts_start));
+        field.price = std::stod(get_field(line, price_start));
+        field.quantity = std::stod(get_field(line, quantity_start));
+        field.side = (get_field(line, side_start) == "bid") ? true : false;
+        field.rebuild = static_cast<bool>(std::stoi(get_field(line, rebuild_start)));
         return field;
     }
 }

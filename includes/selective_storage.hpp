@@ -20,7 +20,9 @@ namespace datascope {
         QUANTITY    = 1 << 3,   ///< Order quantity
         SIDE        = 1 << 4,   ///< Order side (bid/ask)
         REBUILD     = 1 << 5,   ///< Rebuild flag
-        PRICE_LOG   = RECEIVE_TS | PRICE | 1 << 6,   ///< Price calculating flag using receive_ts for compare
+        RECEIVE_TS_PRICE_PAIR   = RECEIVE_TS | PRICE | 1 << 6,   ///< Collecting receive_ts and price fields
+        PRICE_QUANTITY_PAIR = PRICE | QUANTITY | 1 << 7, ///< Collecting price and quantity fields
+        PRICE_SIDE_PAIR = PRICE | SIDE | 1 << 8, ///< Collecting price and side fields
         ///< Combination for order book level data
         LEVEL       = RECEIVE_TS | EXCHANGE_TS | PRICE | QUANTITY | SIDE,
         ///< Combination for order book trade data
