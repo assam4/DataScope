@@ -13,14 +13,14 @@ namespace   datascope {
      * @brief Static map providing regex patterns for validating file headers based on FileType.
      */
     static const std::map<FileType, std::regex> __regexHeaderProvider {
-        {FileType::RECEIVE_TS_PRICE_PAIR, std::regex("^receive_ts;[^;]*;price(;.*)?$")},
-        {FileType::PRICE_QUANTITY_PAIR, std::regex("[^;]*;[^;]*;price;quantity(;.*)?$")},
-        {FileType::PRICE_SIDE_PAIR, std::regex("[^;]+;[^;]+;price;[^;]*;side(;.*)?$")},
-        {FileType::LEVEL, std::regex("^receive_ts;exchange_ts;price;quantity;side(;.*)?$")},
-        {FileType::TRADE, std::regex("^receive_ts;exchange_ts;price;quantity;side;rebuild(;.*)?$")}
+        {AccFlags::RECEIVE_TS_PRICE_PAIR, std::regex("^receive_ts;[^;]*;price(;.*)?$")},
+        {AccFlags::PRICE_QUANTITY_PAIR, std::regex("[^;]*;[^;]*;price;quantity(;.*)?$")},
+        {AccFlags::PRICE_SIDE_PAIR, std::regex("[^;]+;[^;]+;price;[^;]*;side(;.*)?$")},
+        {AccFlags::LEVEL, std::regex("^receive_ts;exchange_ts;price;quantity;side(;.*)?$")},
+        {AccFlags::TRADE, std::regex("^receive_ts;exchange_ts;price;quantity;side;rebuild(;.*)?$")}
     };
 
-    TextChunker::TextChunker(const std::vector<std::string>& files, FileType type)
+    TextChunker::TextChunker(const std::vector<std::string>& files, AccFlags type)
         : m_files(files)
         , m_regex(__regexHeaderProvider.contains(type) ? __regexHeaderProvider.at(type) : std::regex(""))
         , m_index(-1)

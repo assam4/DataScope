@@ -23,7 +23,7 @@ namespace datascope {
              * @param files Vector of file paths to process.
              * @param type The type of files, used to select the appropriate header regex.
              */
-            TextChunker(const std::vector<std::string>&, FileType);
+            TextChunker(const std::vector<std::string>&, AccFlags);
             ~TextChunker() = default;
             TextChunker(const TextChunker&) = delete;
             TextChunker& operator=(const TextChunker&) = delete;
