@@ -2,7 +2,6 @@
 # define MARKET_DATA_PARSER_HPP
 
 # include <vector>
-# include <expected>
 # include <sstream>
 # include <exception>
 # include <format>
@@ -37,9 +36,9 @@ namespace datascope {
              *  @details function get CSV format chunk and call foreach line parse_line specializated function with type F.
              */
             template <AccFlags F>
-            static std::expected<std::vector<DataAccumulator<F>>, bool> parse(const std::string& chunk) {
+            static std::vector<DataAccumulator<F>   parse(const std::string& chunk) {
                 std::vector<DataAccumulator<F>> parsed;
-                std::istringstream is(chunk);
+                std::istringstream  is(chunk);
                 std::string line;        
                 while (std::getline(is, line)) {
                     if (line.empty())

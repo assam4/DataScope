@@ -1,55 +1,85 @@
-#include <algorithm>
-#include <fstream>
-#include <exception>
+#include <map>
 #include <format>
 #include <spdlog/spdlog.h>
 #include "text_chunker.hpp"
+#include "selective_storage.hpp
 
-namespace datascope {
 
-    static constexpr std::string_view   level_header = "receive_ts;exchange_ts;price;quantity;side;rebuild";
-    static constexpr std::string_view   trade_header = "receive_ts;exchange_ts;price;quantity;side";
+namespace   datascope {
+
     static constexpr unsigned   CHUNK_SIZE = 4096;
 
-    static std::expected<std::ifstream, bool> open_file(const std::string& file) {
-        std::ifstream is(file);
-        if (!is.is_open()) {
-            spdlog::warn(std::format("Failed to open: {}", file));
-            return std::unexpected<bool>(false);
-        }
-        return std::move(is);
+    /**
+     * @brief Static map providing regex patterns for validating file headers based on FileType.
+     */
+    static const std::map<FileType, std::regex> __regexHeaderProvider {
+        {FileType::RECEIVE_TS_PRICE_PAIR, std::regex("^receive_ts;[^;]*;price(;.*)?$")},
+        {FileType::PRICE_QUANTITY_PAIR, std::regex("[^;]*;[^;]*;price;quantity(;.*)?$")},
+        {FileType::PRICE_SIDE_PAIR, std::regex("[^;]+;[^;]+;price;[^;]*;side(;.*)?$")},
+        {FileType::LEVEL, std::regex("^receive_ts;exchange_ts;price;quantity;side(;.*)?$")},
+        {FileType::TRADE, std::regex("^receive_ts;exchange_ts;price;quantity;side;rebuild(;.*)?$")}
+    };
+
+    TextChunker::TextChunker(const std::vector<std::string>& files, FileType type)
+        : m_files(files)
+        , m_regex(__regexHeaderProvider.contains(type) ? __regexHeaderProvider.at(type) : std::regex(""))
+        , m_index(-1)
+        , m_finished(false) {
     }
 
-    static bool compare_and_erase_header(std::ifstream& is) {
+    void    TextChunker::open_subsequent_file() {
+        do {
+            if (m_current.is_open())
+                m_current.close();
+            if (m_index == m_files.size() - 1)
+                m_finished = true;
+            else
+                m_current.open(m_files[++m_index]);
+        }
+        while (!check_stream_state());
+    }
+
+    bool    TextChunker::check_stream_state() {
+        if (check_index_end()) {
+            m_finished = true;
+            return m_finished;
+        }
+        if (!m_current.is_open()) {
+            spdlog::warn(std::format("Failed to open: {}", m_files[m_index]));
+            return false;
+        }
         std::string header;
-        std::getline(is, header);
-        return header == level_header || header == trade_header;
+        std::getline(m_current, header);
+        if (!check_header(header)) {
+            spdlog::warn(std::format("Invalid CSV header '{}' in file '{}'", header, m_files[m_index]));
+            return false;
+        }
+        return true;
     }
 
-    static void get_chunks(const std::string& file, std::vector<std::string>& result) {
-        auto is_opt = datascope::open_file(file);
-        if (!is_opt)
-            return;
-        auto is = std::move(is_opt.value());
-        if (!compare_and_erase_header(is)) {
-            spdlog::warn(std::format("Invalid CSV header in file '{}'", file));
-            return;
+    std::string&& TextChunker::get_chunk_from_current_stream() {
+        char   buffer[CHUNK_SIZE];
+        m_current.read(buffer, CHUNK_SIZE);
+        if (m_current.gcount() <= 0) {
+            m_current.close();
+            return {};
         }
-        char    buffer[CHUNK_SIZE];
-        while (is.read(buffer, CHUNK_SIZE)) {
-            std::string current(buffer, is.gcount());
-            if (current.length() == CHUNK_SIZE && current.back() != '\n') {
-                std::string helper;
-                std::getline(is, helper);
-                current += helper;
-            }
-            result.push_back(current);
+        std::string result(buffer, m_current.gcount());
+        if (result.size() == CHUNK_SIZE && result.back() != '\n') {
+            std::string helper;
+            std::getline(m_current, helper);
+            result += helper;
         }
+        return std::move(result);
     }
 
-    std::vector<std::string>&&    TextChunker::extract_chunks(const std::vector<std::string>& files) {
-        std::vector<std::string> result;
-        std::for_each(files.begin(), files.end(), [&](const auto& file) { get_chunks(file, result); });
+    std::string&&   TextChunker::get_chunk() {
+        std::string result;
+        do {
+            if (!m_current.is_open())
+                open_subsequent_file();
+            result = get_chunk_from_current_stream();
+        } while (!check_index_end() && result.empty());
         return std::move(result);
     }
 
