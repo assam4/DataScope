@@ -36,7 +36,7 @@ namespace datascope {
              *  @details function get CSV format chunk and call foreach line parse_line specializated function with type F.
              */
             template <AccFlags F>
-            static std::vector<DataAccumulator<F>   parse(const std::string& chunk) {
+            static std::vector<DataAccumulator<F>>   parse(const std::string& chunk) {
                 std::vector<DataAccumulator<F>> parsed;
                 std::istringstream  is(chunk);
                 std::string line;        
@@ -47,10 +47,10 @@ namespace datascope {
                         parsed.push_back(parse_line<F>(line));
                     }
                     catch (const std::exception& e) {
-                        spdlog::debug(std::format("Parse error: {}", e.what()));
+                        // spdlog::debug(std::format("Parse error: {}", e.what()));
                     }
                     catch (...) {
-                        spdlog::debug(std::format("Parse error: Unknown"));
+                        // spdlog::debug(std::format("Parse error: Unknown"));
                     }
                 }
                 return parsed;
@@ -162,36 +162,36 @@ namespace datascope {
     *   @brief Specialization for order book level data.
     *         Parses receive_ts, exchange_ts, price, quantity, side.
     *         It is important to note that the parsing function works according to the rule that the CSV format is
-    *         " receive_ts; exchange_ts; price; quantity; side; ... ".
+    *         " receive_ts; exchange_ts; price; quantity; side; rebuild;... ".
     */
     template<>
     inline DataAccumulator<AccFlags::LEVEL> MarketDataParser::parse_line<AccFlags::LEVEL>(const std::string& line) {
-        constexpr size_t    receive_ts_start = 0, exchange_ts_start = 1, price_start = 2, quantity_start = 3, side_start = 4;
+        constexpr size_t    receive_ts_start = 0, exchange_ts_start = 1, price_start = 2, quantity_start = 3, side_start = 4, rebuild_start = 5;
         DataAccumulator<AccFlags::LEVEL>    field;
         field.receive_ts = std::stoull(get_field(line, receive_ts_start));
         field.exchange_ts = std::stoull(get_field(line, exchange_ts_start));
         field.price = std::stod(get_field(line, price_start));
         field.quantity = std::stod(get_field(line, quantity_start));
         field.side = (get_field(line, side_start) == "bid") ? true : false;
+        field.rebuild = static_cast<bool>(std::stoi(get_field(line, rebuild_start)));
         return field;
     }
 
     /**
-    *   @brief Specialization for order book level data.
-    *         Parses receive_ts, exchange_ts, price, quantity, side, rebuild.
+    *   @brief Specialization for order book trade data.
+    *         Parses receive_ts, exchange_ts, price, quantity, side.
     *         It is important to note that the parsing function works according to the rule that the CSV format is
-    *         " receive_ts; exchange_ts; price; quantity; side; rebuild; ... ".
+    *         " receive_ts; exchange_ts; price; quantity; side; ... ".
     */
     template<>
     inline DataAccumulator<AccFlags::TRADE> MarketDataParser::parse_line<AccFlags::TRADE>(const std::string& line) {
-        constexpr size_t    receive_ts_start = 0, exchange_ts_start = 1, price_start = 2, quantity_start = 3, side_start = 4, rebuild_start = 5;
+        constexpr size_t    receive_ts_start = 0, exchange_ts_start = 1, price_start = 2, quantity_start = 3, side_start = 4;
         DataAccumulator<AccFlags::TRADE>    field;
         field.receive_ts = std::stoull(get_field(line, receive_ts_start));
         field.exchange_ts = std::stoull(get_field(line, exchange_ts_start));
         field.price = std::stod(get_field(line, price_start));
         field.quantity = std::stod(get_field(line, quantity_start));
         field.side = (get_field(line, side_start) == "bid") ? true : false;
-        field.rebuild = static_cast<bool>(std::stoi(get_field(line, rebuild_start)));
         return field;
     }
 }
