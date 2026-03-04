@@ -39,16 +39,21 @@ std::string parse_arguments(int argc, char **argv) {
 }
 
 void    start_illustration_work(const std::string& config_file) {
-    spdlog::info(std::format("launch of version 1.3.0 of the program"));
+    spdlog::info(std::format("launch of version 1.4.0 of the program"));
     spdlog::info(std::format("processing of the {} configuration file", config_file));
     ConfigProvider cp(config_file);
     auto mode = cp.get_work_mode();
     if (mode == "RECEIVE_TS_PRICE_PAIR") {
         AsyncParser<datascope::AccFlags::RECEIVE_TS_PRICE_PAIR> parser;
-        auto    result = parser.collect(cp.get_input_files());
-        if (!result)
+        std::vector<datascope::DataAccumulator<datascope::AccFlags::RECEIVE_TS_PRICE_PAIR>> result;
+        parser.collect(cp.get_input_files(), [&result](std::vector<datascope::DataAccumulator<datascope::AccFlags::RECEIVE_TS_PRICE_PAIR>> parsed){
+            result.insert(result.end(), std::make_move_iterator(parsed.begin()), std::make_move_iterator(parsed.end()));
+        });
+        if (result.empty())
             throw std::runtime_error("Something went wrong...");
-        ConsoleMenu  menu(std::move(result.value()), cp.get_output_dirs());
+        std::sort(result.begin(), result.end(), datascope::DataAccumulatorLess<datascope::AccFlags::RECEIVE_TS_PRICE_PAIR>());
+        spdlog::info(std::format("Parsing finished: parsed {} valid lines", std::to_string(result.size())));
+        ConsoleMenu<datascope::AccFlags::RECEIVE_TS_PRICE_PAIR>  menu(std::move(result), cp.get_output_dirs());
         menu.switchConsoleMenu();
     }
 }

@@ -8,6 +8,8 @@
 # include <condition_variable>
 # include <algorithm>
 # include <expected>
+# include <functional>
+# include <filesystem>
 # include <spdlog/spdlog.h>
 # include "market_data_parser.hpp"
 # include "text_chunker.hpp"
@@ -33,15 +35,19 @@ namespace datascope {
             AsyncParser(const AsyncParser &) = delete;
             AsyncParser &operator=(const AsyncParser &) = delete;
 
-        std::expected<std::vector<DataAccumulator<T>>, bool>  collect(std::vector<std::string> files) {
-            process_launch(files);
-            wait_for_end();
-            notify_all_stop();
-            if (!data_conversion())
-                return std::unexpected<bool>(false);
-           else
-                return shared_data;
-        }
+            void  collect(std::vector<std::string> files, std::function<void(std::vector<DataAccumulator<T>>)> func) {
+                std::for_each(files.begin(), files.end(), [](const std::string& file) {
+                    try {
+                        auto size = std::filesystem::file_size(file);
+                        spdlog::info("Processing file: {} size: {} bytes", file, size);
+                    } catch (const std::filesystem::filesystem_error& e) {
+                        spdlog::warn("Could not get size for file: {} error: {}", file, e.what());
+                    }
+                });
+                process_launch(files, func);
+                wait_for_end();
+                notify_all_stop();
+            }
 
         private:
             void    task_generating(const std::vector<std::string>& files) {
@@ -60,7 +66,7 @@ namespace datascope {
                 --generate_threads_count;
             }
        
-            void    task_processing(std::stop_token st) {
+            void    task_processing(std::stop_token st, std::function<void(std::vector<DataAccumulator<T>>)> func) {
                 while (!st.stop_requested()) {
                     std::unique_lock<std::mutex> lock(tasks_mutex);
                     cv.wait(lock, [this, &st] { return !tasks.empty() || st.stop_requested(); });
@@ -72,12 +78,12 @@ namespace datascope {
                     auto    result = MarketDataParser::parse<T>(work);
                     if (!result.empty()) {
                         std::lock_guard<std::mutex> result_lock(data_mutex);
-                        shared_data.insert(shared_data.end(), std::make_move_iterator(result.begin()), std::make_move_iterator(result.end()));
+                        func(result);
                     }
                 }
             }
        
-            void    process_launch(std::vector<std::string>& files) {
+            void    process_launch(std::vector<std::string>& files, std::function<void(std::vector<DataAccumulator<T>>)> func) {
                 auto    size = files.size();
                 if (size > 3 && process_threads_count > 2) {
                     auto mid = size / 2; 
@@ -88,7 +94,7 @@ namespace datascope {
                     ++generate_threads_count;
                 }
                 for (size_t i = 0; i < process_threads_count; ++i)
-                    workers.emplace_back([this](std::stop_token st) { this->task_processing(st); });
+                    workers.emplace_back([this, func](std::stop_token st) { this->task_processing(st, func); });
                 task_generating(files);
             }
 
@@ -111,20 +117,8 @@ namespace datascope {
                 cv.notify_all();
                 workers.clear();
             }
-
-            bool    data_conversion() {
-                if (shared_data.empty()) {
-                    spdlog::error("data doesn't parsed from input files");
-                    return false;
-                }
-                std::sort(shared_data.begin(), shared_data.end(), DataAccumulatorLess<T>());
-                spdlog::info(std::format("Parsing finished: parsed {} valid lines", std::to_string(shared_data.size())));
-                return true;
-            }
-
         private:
             std::queue<std::string> tasks;
-            std::vector<DataAccumulator<T>> shared_data;
             std::vector<std::jthread>   workers;
             std::condition_variable cv;
             std::mutex  data_mutex;
