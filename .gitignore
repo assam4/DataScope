@@ -30,3 +30,7 @@ cmake-build-release/
 *.swp
 *.swo
 *~
+
+# Large input files (exceeds GitHub 100MB limit)
+examples/input/large_level.csv
+examples/input/large_trade.csv
