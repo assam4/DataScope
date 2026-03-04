@@ -47,10 +47,10 @@ namespace datascope {
                         parsed.push_back(parse_line<F>(line));
                     }
                     catch (const std::exception& e) {
-                        // spdlog::debug(std::format("Parse error: {}", e.what()));
+                        spdlog::debug(std::format("Parse error: {}", e.what()));
                     }
                     catch (...) {
-                        // spdlog::debug(std::format("Parse error: Unknown"));
+                        spdlog::debug(std::format("Parse error: Unknown"));
                     }
                 }
                 return parsed;

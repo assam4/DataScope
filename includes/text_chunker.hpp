@@ -3,7 +3,6 @@
 
 # include <fstream> 
 # include <vector>
-# include <string>
 # include <regex>
 # include <format>
 # include <spdlog/spdlog.h>
@@ -69,13 +68,13 @@ namespace datascope {
             return m_finished;
         }
         if (!m_current.is_open()) {
-            // spdlog::warn(std::format("Failed to open: {}", m_files[m_index]));
+            spdlog::warn(std::format("Failed to open: {}", m_files[m_index]));
             return false;
         }
         std::string header;
         std::getline(m_current, header);
         if (!check_header(header)) {
-            // spdlog::warn(std::format("Invalid CSV header '{}' in file '{}'", header, m_files[m_index]));
+            spdlog::warn(std::format("Invalid CSV header '{}' in file '{}'", header, m_files[m_index]));
             return false;
         }
         return true;
