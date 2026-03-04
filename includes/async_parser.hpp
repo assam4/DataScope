@@ -8,6 +8,7 @@
 # include <condition_variable>
 # include <algorithm>
 # include <expected>
+# include <spdlog/spdlog.h>
 # include "market_data_parser.hpp"
 # include "text_chunker.hpp"
 
@@ -43,7 +44,7 @@ namespace datascope {
         }
 
         private:
-            void    task_generating(std::vector<std::string>& files) {
+            void    task_generating(const std::vector<std::string>& files) {
                 TextChunker<T> generator(files);
                 std::string chunk;
                 while (true) {
@@ -120,6 +121,7 @@ namespace datascope {
                 spdlog::info(std::format("Parsing finished: parsed {} valid lines", std::to_string(shared_data.size())));
                 return true;
             }
+
         private:
             std::queue<std::string> tasks;
             std::vector<DataAccumulator<T>> shared_data;

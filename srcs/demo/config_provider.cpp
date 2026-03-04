@@ -1,10 +1,10 @@
 #include "config_provider.hpp"
 
 std::vector<std::string> ConfigProvider::get_dirs(const std::string& name) {
-    auto main_table = (*m_config)["main"].as_table();
+    auto main_table = m_config["main"].as_table();
     if (!main_table || !main_table->contains(name))
         throw std::runtime_error(std::format("Invalid configuration file: missing {} parameter.", name));    
-    auto&   value = (*main_table)[name];
+    auto value = (*main_table)[name];
     if (auto arr = value.as_array()) {
         std::vector<std::string>    result;
         for (const auto& item : *arr) {
@@ -19,7 +19,7 @@ std::vector<std::string> ConfigProvider::get_dirs(const std::string& name) {
 }
 
 std::vector<std::string>    ConfigProvider::get_files_mask() {
-    auto    main_table = (*m_config)["main"].as_table();
+    auto    main_table = m_config["main"].as_table();
     if (!main_table || !main_table->contains("filename_mask"))
         return {}; 
     auto    masks_array = (*main_table)["filename_mask"].as_array();
@@ -66,20 +66,21 @@ std::vector<std::string> ConfigProvider::get_input_files() {
     return input_files;
 }
 
-std::string ConfigProvider::get_output_path() {
+std::vector<std::string> ConfigProvider::get_output_dirs() {
     auto    dirs = get_dirs("output");
-    auto    dir = dirs.empty() ? "" : dirs[0];
-    if (dir.empty()) {
-        dir = "./output";
-        spdlog::info(std::format("Output directory not specified. Using default: {}", dir));
+    if (dirs.empty()) {
+        dirs = {"./output"};
+        spdlog::info(std::format("Output directory not specified. Using default: {}", dirs[0]));
     }    
-    if (!std::filesystem::exists(dir)) {
-        std::filesystem::create_directories(dir);
-        spdlog::info(std::format("Created output directory: {}", dir));
+    for (const auto& dir : dirs) {
+        if (!std::filesystem::exists(dir)) {
+            std::filesystem::create_directories(dir);
+            spdlog::info(std::format("Created output directory: {}", dir));
+        }
+        if (!std::filesystem::is_directory(dir))
+            throw std::runtime_error(std::format("Output path '{}' is not a directory", dir));
     }
-    if (!std::filesystem::is_directory(dir))
-        throw std::runtime_error(std::format("Output path '{}' is not a directory", dir));
-    return dir;
+    return dirs;
 }
 
 std::string ConfigProvider::get_work_mode() {

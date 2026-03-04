@@ -1,0 +1,5 @@
+[main]
+input = ["/home/assam04/Desktop/DataScope/examples/input"]
+output = ["/home/assam04/Desktop/DataScope/examples/output"]
+mode = "RECEIVE_TS_PRICE_PAIR"
+filename_mask = ["level", "trade"]

@@ -34,13 +34,13 @@ namespace datascope {
             TextChunker& operator=(const TextChunker&) = delete;
             bool    finished() const noexcept { return m_finished; }
             int     state() const noexcept { return m_index; }
-            std::string&& get_chunk();
+            std::string get_chunk();
         private:
             void    open_subsequent_file();
             bool    check_index_end() const noexcept { return m_index == static_cast<int>(m_files.size()) - 1; }
             bool    check_header(const std::string&) const;
             bool    check_stream_state();
-            std::string&& get_chunk_from_current_stream();
+            std::string get_chunk_from_current_stream();
         private:
             const std::vector<std::string> m_files;
             std::ifstream   m_current;
@@ -81,12 +81,12 @@ namespace datascope {
     }
 
     template <AccFlags T>
-    std::string&& TextChunker<T>::get_chunk_from_current_stream() {
+    std::string TextChunker<T>::get_chunk_from_current_stream() {
         char buffer[CHUNK_SIZE];
         m_current.read(buffer, CHUNK_SIZE);
         if (m_current.gcount() <= 0) {
             m_current.close();
-            return {};
+            return "";
         }
         std::string result(buffer, m_current.gcount());
         if (result.size() == CHUNK_SIZE && result.back() != '\n') {
@@ -94,18 +94,18 @@ namespace datascope {
             std::getline(m_current, helper);
             result += helper;
         }
-        return std::move(result);
+        return result;
     }
 
     template <AccFlags T>
-    std::string&& TextChunker<T>::get_chunk() {
+    std::string TextChunker<T>::get_chunk() {
         std::string result;
         do {
             if (!m_current.is_open())
                 open_subsequent_file();
             result = get_chunk_from_current_stream();
         } while (!check_index_end() && result.empty());
-        return std::move(result);
+        return result;
     }
 
     template <>

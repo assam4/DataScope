@@ -29,14 +29,13 @@ if (NOT Boost_FOUND)
 endif()
 
 add_executable(${PROJECT_NAME}
-    src/main.cpp
-    src/toml_config_parser.cpp
-    src/logger.cpp
-    src/parser_csv.cpp
+    srcs/demo/main.cpp
+    srcs/demo/config_provider.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-    include
+    includes
+    includes/demo
     ${tomlplusplus_SOURCE_DIR}/include
 )
 
