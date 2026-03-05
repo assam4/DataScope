@@ -72,7 +72,8 @@ namespace datascope {
             return false;
         }
         std::string header;
-        std::getline(m_current, header);
+        if (!std::getline(m_current, header))
+            return false;
         if (!check_header(header)) {
             spdlog::warn(std::format("Invalid CSV header '{}' in file '{}'", header, m_files[m_index]));
             return false;
