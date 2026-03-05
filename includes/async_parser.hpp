@@ -7,9 +7,12 @@
 # include <mutex>
 # include <condition_variable>
 # include <algorithm>
+# include <type_traits>
+# include <utility>
 # include <expected>
-# include <functional>
 # include <filesystem>
+# include <concepts>
+# include <type_traits>
 # include <spdlog/spdlog.h>
 # include "market_data_parser.hpp"
 # include "text_chunker.hpp"
@@ -35,7 +38,9 @@ namespace datascope {
             AsyncParser(const AsyncParser &) = delete;
             AsyncParser &operator=(const AsyncParser &) = delete;
 
-            void  collect(std::vector<std::string> files, std::function<void(std::vector<DataAccumulator<T>>)> func) {
+            template <typename F>
+            requires std::invocable<F&, std::vector<DataAccumulator<T>>>
+            void  collect(std::vector<std::string> files, F&& func) {
                 std::for_each(files.begin(), files.end(), [](const std::string& file) {
                     try {
                         auto size = std::filesystem::file_size(file);
@@ -44,7 +49,8 @@ namespace datascope {
                         spdlog::warn("Could not get size for file: {} error: {}", file, e.what());
                     }
                 });
-                process_launch(files, func);
+                std::decay_t<F> callback(std::forward<F>(func));
+                process_launch(files, callback);
                 wait_for_end();
                 notify_all_stop();
             }
@@ -66,7 +72,8 @@ namespace datascope {
                 --generate_threads_count;
             }
        
-            void    task_processing(std::stop_token st, std::function<void(std::vector<DataAccumulator<T>>)> func) {
+            template <typename F>
+            void    task_processing(std::stop_token st, F& func) {
                 while (!st.stop_requested()) {
                     std::unique_lock<std::mutex> lock(tasks_mutex);
                     cv.wait(lock, [this, &st] { return !tasks.empty() || st.stop_requested(); });
@@ -83,7 +90,8 @@ namespace datascope {
                 }
             }
        
-            void    process_launch(std::vector<std::string>& files, std::function<void(std::vector<DataAccumulator<T>>)> func) {
+            template <typename F>
+            void    process_launch(std::vector<std::string>& files, F& func) {
                 auto    size = files.size();
                 if (size > 3 && process_threads_count > 2) {
                     auto mid = size / 2; 
@@ -94,7 +102,7 @@ namespace datascope {
                     ++generate_threads_count;
                 }
                 for (size_t i = 0; i < process_threads_count; ++i)
-                    workers.emplace_back([this, func](std::stop_token st) { this->task_processing(st, func); });
+                    workers.emplace_back([this, &func](std::stop_token st) { this->task_processing(st, func); });
                 task_generating(files);
             }
 

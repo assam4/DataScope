@@ -268,9 +268,9 @@ spdlog::error("data doesn't parsed from input files");
 
 ---
 
-## 📊 Design Patterns Summary
+## 📊 Design Patterns|Concepts Summary
 
-| File | Patterns | Purpose |
+| File | Patterns / Concepts | Purpose |
 |------|----------|---------|
 | `selective_storage.hpp` | EBO, Conditional Types, Template Specialization | Optimized storage |
 | `market_data_parser.hpp` | Template Specialization, Strategy | CSV parsing to different types |
