@@ -2,7 +2,7 @@
 
 ## Overview
 
-**DataScope** is a high-performance C++20 library designed for parsing and processing large-scale financial market data from CSV files. It specializes in handling order book level updates and trade data with minimal memory footprint and maximum processing efficiency through template-based selective data storage and multi-threaded asynchronous parsing.
+**DataScope** is a high-performance C++20/23 library designed for parsing and processing large-scale financial market data from CSV files. It specializes in handling order book level updates and trade data with minimal memory footprint and maximum processing efficiency through template-based selective data storage and multi-threaded asynchronous parsing.
 
 The library is ideal for quantitative trading systems, market data services, and financial data analysis platforms that need to process massive amounts of market data with selective field extraction.
 
